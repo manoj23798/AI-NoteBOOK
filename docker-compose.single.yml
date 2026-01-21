@@ -1,0 +1,46 @@
+services:
+  ai_notebook_single:
+    # image: manoj23798/ai-notebook:v1-latest-single
+    build:
+      context: .
+      dockerfile: Dockerfile.single
+    ports:
+      - "8502:8502" # Next.js Frontend
+      - "5055:5055" # REST API
+    env_file:
+      - ./docker.env
+    volumes:
+      - ./notebook_data:/app/data # Application data
+      - ./surreal_single_data:/mydata # SurrealDB data
+      - ./frontend:/app/frontend # Mount source for Hot Reload
+      - /app/frontend/node_modules # Preserve container node_modules
+    restart: always
+    # Single container includes all services: SurrealDB, API, Worker, and Next.js Frontend
+    # Access:
+    # - Next.js UI: http://localhost:8502
+    # - REST API: http://localhost:5055
+    # - API Documentation: http://localhost:5055/docs
+
+  vp-backend:
+    build: ./virtual_presentation/backend-java
+    ports:
+      - "8085:8080" # Mapped to 8085 to avoid conflict with SurrealDB (8000)
+    volumes:
+      - ./virtual_presentation/backend-java/slides:/app/slides
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    restart: always
+
+  vp-frontend:
+    build: ./virtual_presentation/frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./virtual_presentation/frontend:/app
+      - /app/node_modules
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - VITE_API_URL=http://localhost:8085
+    depends_on:
+      - vp-backend
+    restart: always
